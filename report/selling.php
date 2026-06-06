@@ -150,33 +150,24 @@
 			function downloadCSV(csv, filename) {
 			  var csvFile;
 			  var downloadLink;
-			  // CSV file
 			  csvFile = new Blob([csv], {type: "text/csv"});
-			  // Download link
 			  downloadLink = document.createElement("a");
-			  // File name
 			  downloadLink.download = filename;
-			  // Create a link to the file
 			  downloadLink.href = window.URL.createObjectURL(csvFile);
-			  // Hide download link
 			  downloadLink.style.display = "none";
-			  // Add the link to DOM
 			  document.body.appendChild(downloadLink);
-			  // Click download link
 			  downloadLink.click();
-			  }
+			}
 			  
-			  function exportTableToCSV(filename) {
-			    var csv = [];
-			    var rows = document.querySelectorAll("#dataTable tr");
-			    
-			   for (var i = 0; i < rows.length; i++) {
-			      var row = [], cols = rows[i].querySelectorAll("td, th");
-			   for (var j = 0; j < cols.length; j++)
-                row.push(cols[j].innerText);
-            csv.push(row.join(","));
+			function exportTableToCSV(filename) {
+			  var csv = [];
+			  var rows = document.querySelectorAll("#dataTable tr");
+			  for (var i = 0; i < rows.length; i++) {
+			    var row = [], cols = rows[i].querySelectorAll("td, th");
+			    for (var j = 0; j < cols.length; j++)
+              row.push(cols[j].innerText);
+              csv.push(row.join(","));
             }
-            // Download CSV file
             downloadCSV(csv.join("\n"), filename);
             }
 
@@ -195,7 +186,6 @@ function number_format(number, decimals, dec_point, thousands_sep) {
       return '' + (Math.round(n * k) / k)
         .toFixed(prec);
     };
-  // Fix for IE parseFloat(0.55).toFixed(0) = 0;
   s = (prec ? toFixedFix(n, prec) : '' + Math.round(n))
     .split('.');
   if (s[0].length > 3) {
@@ -238,6 +228,17 @@ function toggleSelectAll() {
 function confirmDeleteSelected() {
 	var checkboxes = document.querySelectorAll('input[name="selectItem"]:checked');
 	if (checkboxes.length > 0) {
+		var container = document.getElementById('selectedItemsContainer');
+		container.innerHTML = '';
+		
+		checkboxes.forEach(function(checkbox) {
+			var input = document.createElement('input');
+			input.type = 'hidden';
+			input.name = 'selectedItems[]';
+			input.value = checkbox.value;
+			container.appendChild(input);
+		});
+		
 		document.getElementById('formDeleteSelected').submit();
 	}
 }
@@ -296,7 +297,7 @@ $(document).ready(function(){
 				echo '<a class="btn bg-primary" href="./?report=selling&idbl='.$idbl2.'&session='.$session.'" title="Show '.ucfirst(substr($idbl2,0,3).' '.substr($idbl2,3,5)).'"><i class="fa fa-search"></i> '.ucfirst(substr($idbl2,0,3).' '.substr($idbl2,3,5)).'</a>';}?>
 		  <button name="print" class="btn bg-primary" onclick="window.open('./report/print.php?<?= explode("?report=selling&",$url)[1] ?>','_blank');" title="Print"><i class="fa fa-print"></i> <?= $_print ?></button>
 		  <button style="display: <?= $shd; ?>;" name="remdata" class="btn bg-danger" onclick="location.href='#remdata';" title="Delete Data <?= $filedownload; ?>"><i class="fa fa-trash"></i> <?= $_delete_data.' '. $filedownload; ?></button>
-		  <button  id="remSelected" style="display: none;" class="btn bg-red" onclick="location.href='#remSelected'"><i class="fa fa-trash"></i> <span id="selected"></span> <?= $_selected ?></button>
+		  <button  id="remSelected" style="display: none;" class="btn bg-red" onclick="location.href='#remSelected'" title="Delete selected items"><i class="fa fa-trash"></i> <span id="selected">0</span> <?= $_selected ?></button>
 		</div>
 	</div>
 	</div>
@@ -491,7 +492,7 @@ $(document).ready(function(){
 </div>
 </div>
 
-<!-- Modal -->
+<!-- Modal Delete All -->
 <div class="modal-window" id="remdata" aria-hidden="true">
   <div>
   	<header><h1><?= $_confirm ?></h1></header>
@@ -516,12 +517,10 @@ $(document).ready(function(){
 	<p>
 			<?= $_delete_report ?> <strong><span id="deleteCount">0</span></strong> item?
 	</p>
-	<form autocomplete="off" method="post" action="">
 	<center>
 	<button type="button" name="confirmDelete" title="Yes" class="btn bg-primary" onclick="confirmDeleteSelected()">Yes</button>&nbsp;
 	<a class="btn bg-secondary" href="#" title="Close" class="modal-close">No</a>
 	</center>
-	</form>
   </div>
 </div>
 
@@ -539,24 +538,7 @@ document.addEventListener('click', function(e) {
 	<div id="selectedItemsContainer"></div>
 </form>
 
-<script>
-function confirmDeleteSelected() {
-	var checkboxes = document.querySelectorAll('input[name="selectItem"]:checked');
-	var container = document.getElementById('selectedItemsContainer');
-	container.innerHTML = '';
-	
-	checkboxes.forEach(function(checkbox) {
-		var input = document.createElement('input');
-		input.type = 'hidden';
-		input.name = 'selectedItems[]';
-		input.value = checkbox.value;
-		container.appendChild(input);
-	});
-	
-	document.getElementById('formDeleteSelected').submit();
-}
-</script>
-
+<!-- Modal Help -->
 <div class="modal-window" id="help" aria-hidden="true">
   <div>
   	<header><h1><?= $_help ?></h1></header>
