@@ -15,12 +15,6 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-session_start();
-// hide all error
-error_reporting(0);
-if (!isset($_SESSION["mikhmon"])) {
-	header("Location:../admin.php?id=login");
-} else {
 
 	$idhr = $_GET['idhr'];
 	$idbl = $_GET['idbl'];
@@ -34,6 +28,7 @@ if (!isset($_SESSION["mikhmon"])) {
 	}
 	$_SESSION['idbl'] = $idbl;
 	$remdata = ($_POST['remdata']);
+	$remSelected = ($_POST['remSelected']);
 	$prefix = $_GET['prefix'];
 	
 
@@ -69,6 +64,36 @@ if (!isset($_SESSION["mikhmon"])) {
 				}
 			}
 
+		}
+		echo "<script>window.location='./?report=selling&session=" . $session . "'</script>";
+	}
+
+	// Handle delete selected items
+	if (isset($remSelected)) {
+		$selectedItems = $_POST['selectedItems'] ?? array();
+		if (!empty($selectedItems)) {
+			if ($API->connect($iphost, $userhost, decrypt($passwdhost))) {
+				$API->write('/system/script/print', false);
+				if (strlen($idhr) > "0") {
+					$API->write('?source=' . $idhr . '', false);
+				} elseif (strlen($idbl) > "0") {
+					$API->write('?owner=' . $idbl . '', false);
+				} else {
+					$API->write('?comment=mikhmon', false);
+				}
+				$API->write('=.proplist=.id,.name');
+				$ARREMD = $API->read();
+				
+				for ($i = 0; $i < count($ARREMD); $i++) {
+					$getname = explode("-|-", $ARREMD[$i]['name']);
+					$itemKey = $getname[0].'|'.$getname[1].'|'.$getname[2];
+					if (in_array($itemKey, $selectedItems)) {
+						$API->write('/system/script/remove', false);
+						$API->write('=.id=' . $ARREMD[$i]['.id']);
+						$READ = $API->read();
+					}
+				}
+			}
 		}
 		echo "<script>window.location='./?report=selling&session=" . $session . "'</script>";
 	}
@@ -120,7 +145,6 @@ if (!isset($_SESSION["mikhmon"])) {
 		$shd = "inline-block";
 	}
 	
-}
 ?>
 		<script>
 			function downloadCSV(csv, filename) {
@@ -149,12 +173,12 @@ if (!isset($_SESSION["mikhmon"])) {
 			   for (var i = 0; i < rows.length; i++) {
 			      var row = [], cols = rows[i].querySelectorAll("td, th");
 			   for (var j = 0; j < cols.length; j++)
-            row.push(cols[j].innerText);
-        csv.push(row.join(","));
-        }
-        // Download CSV file
-        downloadCSV(csv.join("\n"), filename);
-        }
+                row.push(cols[j].innerText);
+            csv.push(row.join(","));
+            }
+            // Download CSV file
+            downloadCSV(csv.join("\n"), filename);
+            }
 
 // https://stackoverflow.com/questions/33218607/use-inline-css-to-apply-usd-currency-format-within-html-table
 function number_format(number, decimals, dec_point, thousands_sep) {
@@ -185,24 +209,56 @@ function number_format(number, decimals, dec_point, thousands_sep) {
   }
   return s.join(dec);
 }
+
+// FITUR SELECT DAN DELETE
+function updateSelectedCount() {
+	var checkboxes = document.querySelectorAll('input[name="selectItem"]:checked');
+	var count = checkboxes.length;
+	var remSelectedBtn = document.getElementById('remSelected');
+	
+	if (count > 0) {
+		remSelectedBtn.style.display = 'inline-block';
+		document.getElementById('selected').textContent = count;
+	} else {
+		remSelectedBtn.style.display = 'none';
+	}
+}
+
+function toggleSelectAll() {
+	var checkboxes = document.querySelectorAll('input[name="selectItem"]');
+	var selectAllCheckbox = document.getElementById('selectAllCheckbox');
+	
+	checkboxes.forEach(function(checkbox) {
+		checkbox.checked = selectAllCheckbox.checked;
+	});
+	
+	updateSelectedCount();
+}
+
+function confirmDeleteSelected() {
+	var checkboxes = document.querySelectorAll('input[name="selectItem"]:checked');
+	if (checkboxes.length > 0) {
+		document.getElementById('formDeleteSelected').submit();
+	}
+}
         
 		window.onload=function() {
           var sum = 0;
           var dataTable = document.getElementById("selling");
           
           // use querySelector to find all second table cells
-          var cells = document.querySelectorAll("td + td + td + td + td + td");
+          var cells = document.querySelectorAll("td + td + td + td + td + td + td");
           for (var i = 0; i < cells.length; i++)
           sum+=parseFloat(cells[i].firstChild.data);
           
           var th = document.getElementById('total');
     <?php if ($currency == in_array($currency, $cekindo['indo'])) {
       echo 'th.innerHTML = "'.$currency.' " + number_format(th.innerHTML + (sum),"","",".") ;';
-		} else {
-			echo 'th.innerHTML = "'.$currency.' " + number_format(th.innerHTML + (sum),2,".",",") ;';
-		} ?>
-		
-		var tables = document.getElementsByTagName('tbody');
+	} else {
+		echo 'th.innerHTML = "'.$currency.' " + number_format(th.innerHTML + (sum),2,".",",") ;';
+	} ?>
+	
+	var tables = document.getElementsByTagName('tbody');
     var table = tables[tables.length -1];
     var rows = table.rows;
     for(var i = 0, td; i < rows.length; i++){
@@ -240,7 +296,7 @@ $(document).ready(function(){
 				echo '<a class="btn bg-primary" href="./?report=selling&idbl='.$idbl2.'&session='.$session.'" title="Show '.ucfirst(substr($idbl2,0,3).' '.substr($idbl2,3,5)).'"><i class="fa fa-search"></i> '.ucfirst(substr($idbl2,0,3).' '.substr($idbl2,3,5)).'</a>';}?>
 		  <button name="print" class="btn bg-primary" onclick="window.open('./report/print.php?<?= explode("?report=selling&",$url)[1] ?>','_blank');" title="Print"><i class="fa fa-print"></i> <?= $_print ?></button>
 		  <button style="display: <?= $shd; ?>;" name="remdata" class="btn bg-danger" onclick="location.href='#remdata';" title="Delete Data <?= $filedownload; ?>"><i class="fa fa-trash"></i> <?= $_delete_data.' '. $filedownload; ?></button>
-		  <button  id="remSelected" style="display: none;" class="btn bg-red" onclick="MikhmonRemoveReportSelected()"><i class="fa fa-trash"></i> <span id="selected"></span> <?= $_selected ?></button>
+		  <button  id="remSelected" style="display: none;" class="btn bg-red" onclick="location.href='#remSelected'"><i class="fa fa-trash"></i> <span id="selected"></span> <?= $_selected ?></button>
 		</div>
 	</div>
 	</div>
@@ -334,11 +390,14 @@ $(document).ready(function(){
 			<table id="dataTable" class="table table-bordered table-hover text-nowrap">
 				<thead class="thead-light">
 				<tr>
-				  <th colspan=5 ><?= $_selling_report ?> <?= $filedownload . $fprefix; ?><b style="font-size:0;">,,,,</b></th>
+				  <th colspan=6 ><?= $_selling_report ?> <?= $filedownload . $fprefix; ?><b style="font-size:0;">,,,,</b></th>
 				  <th style="text-align:right;"><?= $_total ?></th>
 				  <th style="text-align:right;" id="total"></th>
 				</tr>
 				<tr>
+				  <th style="width: 30px;">
+				  	<input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" title="Select All">
+				  </th>
 				  <th >&#8470;</th>
 					<th ><?= $_date ?></th>
 					<th ><?= $_time ?></th>
@@ -354,7 +413,9 @@ $(document).ready(function(){
 				for ($i = 0; $i < $TotalReg; $i++) {
 					$getname = explode("-|-", $getData[$i]['name']);
 					if (substr($getname[2], 0, strlen($prefix)) == $prefix) {
+						$itemKey = $getname[0].'|'.$getname[1].'|'.$getname[2];
 						echo "<tr>";
+						echo "<td style='text-align:center;'><input type='checkbox' name='selectItem' value='" . htmlspecialchars($itemKey) . "' onchange='updateSelectedCount()'></td>";
 						echo "<td>";
 						$tgl = $getname[0];
 						echo $tgl;
@@ -385,7 +446,9 @@ $(document).ready(function(){
 			} else {
 				for ($i = 0; $i < $TotalReg; $i++) {
 					$getname = explode("-|-", $getData[$i]['name']);
+					$itemKey = $getname[0].'|'.$getname[1].'|'.$getname[2];
 					echo "<tr>";
+					echo "<td style='text-align:center;'><input type='checkbox' name='selectItem' value='" . htmlspecialchars($itemKey) . "' onchange='updateSelectedCount()'></td>";
 					echo "<td>";
 					$tgl = $getname[0];
 					echo $tgl;
@@ -444,6 +507,56 @@ $(document).ready(function(){
 	</form>
   </div>
 </div>
+
+<!-- Modal Delete Selected -->
+<div class="modal-window" id="remSelected" aria-hidden="true">
+  <div>
+  	<header><h1><?= $_confirm ?></h1></header>
+  	<a style="font-weight:bold;" href="#" title="Close" class="modal-close">X</a>
+	<p>
+			<?= $_delete_report ?> <strong><span id="deleteCount">0</span></strong> item?
+	</p>
+	<form autocomplete="off" method="post" action="">
+	<center>
+	<button type="button" name="confirmDelete" title="Yes" class="btn bg-primary" onclick="confirmDeleteSelected()">Yes</button>&nbsp;
+	<a class="btn bg-secondary" href="#" title="Close" class="modal-close">No</a>
+	</center>
+	</form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('click', function(e) {
+	if (e.target && (e.target.getAttribute('href') === '#remSelected')) {
+		var count = document.querySelectorAll('input[name="selectItem"]:checked').length;
+		document.getElementById('deleteCount').textContent = count;
+	}
+});
+</script>
+
+<form id="formDeleteSelected" method="post" action="" style="display:none;">
+	<input type="hidden" name="remSelected" value="1">
+	<div id="selectedItemsContainer"></div>
+</form>
+
+<script>
+function confirmDeleteSelected() {
+	var checkboxes = document.querySelectorAll('input[name="selectItem"]:checked');
+	var container = document.getElementById('selectedItemsContainer');
+	container.innerHTML = '';
+	
+	checkboxes.forEach(function(checkbox) {
+		var input = document.createElement('input');
+		input.type = 'hidden';
+		input.name = 'selectedItems[]';
+		input.value = checkbox.value;
+		container.appendChild(input);
+	});
+	
+	document.getElementById('formDeleteSelected').submit();
+}
+</script>
+
 <div class="modal-window" id="help" aria-hidden="true">
   <div>
   	<header><h1><?= $_help ?></h1></header>
